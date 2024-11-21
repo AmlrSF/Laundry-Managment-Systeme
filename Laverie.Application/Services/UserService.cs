@@ -25,8 +25,7 @@ namespace Laverie.Application.Services
             {
 
                 Name = userDto.Name,
-                Age = userDto.Age,
-                Password = userDto.Password,
+                Password = userDto.Pass,
                 Email = userDto.Email
             };
 

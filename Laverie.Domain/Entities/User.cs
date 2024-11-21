@@ -13,5 +13,6 @@ namespace Laverie.Domain.Entities
         public string Password { get; set; }
         public string Email { get; set; }
         public int Age { get; set; }
+        public List<Laundry> Laundries { get; set; } = new List<Laundry>();
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Laverie.Domain.Entities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,18 +11,20 @@ namespace Laverie.Application.DTO
     {
         public int Id { get; set; }
         public string Name { get; set; }
-        public int Age { get; set; }
 
-        public string Password { get; set; }
         public string Email { get; set; }
+        public string Pass { get; set; }
 
-        public UserDTO(int id, string name, int age, string email, string Pass)
+
+        public List<Laundry> Laundries { get; set; } = new List<Laundry>();
+
+        public UserDTO(int id, string name, string email , string pass, List<Laundry> l )
         {
             Id = id;
             Name = name;
-            Age = age;
             Email = email;
-            Password = Pass;
+            Laundries = l;
+            Pass = pass;
         }
     }
 }
