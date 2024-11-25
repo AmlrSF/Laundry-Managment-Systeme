@@ -3,14 +3,14 @@ using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Laverie.Domain.Entities;
-using Laverie.API.Infrastructure.context; // AppDbContext namespace
+using Laverie.API.Infrastructure.context; 
 using Microsoft.Data.SqlClient;
 
 public class ConfigurationRepo
 {
     private readonly AppDbContext _dbContext;
 
-    // Inject AppDbContext to get access to the connection string and connection management
+    
     public ConfigurationRepo(AppDbContext dbContext)
     {
         _dbContext = dbContext;
@@ -20,7 +20,7 @@ public class ConfigurationRepo
     {
         var users = new List<User>();
 
-        // Use the CreateConnection method from AppDbContext to get the connection
+       
         using (var connection = _dbContext.CreateConnection())
         {
             connection.Open();
@@ -29,14 +29,15 @@ public class ConfigurationRepo
                 SELECT 
                     p.Id AS ProprietaireId, 
                     p.Name AS ProprietaireName, 
+                    p.Email AS ProprietaireEmail, 
                     l.Id AS LaverieId, 
                     l.NomLaverie AS LaverieName, 
                     m.Id AS MachineId, 
                     m.Type AS MachineType, 
+                    m.Status AS MachineStatus, 
                     c.Id AS CycleId, 
                     c.Date AS CycleDate, 
-                    c.Price AS CyclePrice,
-                    p.Email As ProprietaireEmail
+                    c.Price AS CyclePrice
                 FROM 
                     Proprietaire p
                 LEFT JOIN 
@@ -65,20 +66,20 @@ public class ConfigurationRepo
                         {
                             Id = proprietaireId,
                             Name = reader.GetString(1),
-                            Email = reader.GetString(9),
+                            Email = reader.GetString(2),
                             Laundries = new List<Laundry>()
                         };
                         users.Add(currentProprietaire);
                     }
 
-                    int? laverieId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
+                    int? laverieId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3);
                     if (laverieId.HasValue)
                     {
                         var laverie = currentProprietaire.Laundries
                             .Find(l => l.Id == laverieId.Value) ?? new Laundry
                             {
                                 Id = laverieId.Value,
-                                NomLaverie = reader.GetString(3),
+                                NomLaverie = reader.GetString(4),
                                 Machines = new List<Machine>()
                             };
 
@@ -87,14 +88,15 @@ public class ConfigurationRepo
                             currentProprietaire.Laundries.Add(laverie);
                         }
 
-                        int? machineId = reader.IsDBNull(4) ? (int?)null : reader.GetInt32(4);
+                        int? machineId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5);
                         if (machineId.HasValue)
                         {
                             var machine = laverie.Machines
                                 .Find(m => m.Id == machineId.Value) ?? new Machine
                                 {
                                     Id = machineId.Value,
-                                    Type = reader.GetString(5),
+                                    Type = reader.GetString(6),
+                                    Status = reader.GetBoolean(7),
                                     Cycles = new List<Cycle>()
                                 };
 
@@ -103,13 +105,13 @@ public class ConfigurationRepo
                                 laverie.Machines.Add(machine);
                             }
 
-                            if (!reader.IsDBNull(6))
+                            if (!reader.IsDBNull(8))
                             {
                                 var cycle = new Cycle
                                 {
-                                    Id = reader.GetInt32(6),
-                                    Date = reader.GetDateTime(7),
-                                    Price = reader.GetDecimal(8)
+                                    Id = reader.GetInt32(9),
+                                    Date = reader.GetDateTime(10),
+                                    Price = reader.GetDecimal(11)
                                 };
                                 machine.Cycles.Add(cycle);
                             }

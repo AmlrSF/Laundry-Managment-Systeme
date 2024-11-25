@@ -10,6 +10,8 @@ namespace Laverie.Domain.Entities
     {
         public int Id { get; set; }
         public string LaverieName { get; set; }
+        
+        public bool Status { get; set; }
         public string Type { get; set; }
         public List<Cycle> Cycles { get; set; } = new List<Cycle>();
     }
