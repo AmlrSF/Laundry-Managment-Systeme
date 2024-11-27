@@ -8,8 +8,8 @@ namespace Laverie.Domain.Entities
 {
     public class Laundry
     {
-        public int Id { get; set; }
-        public string NomLaverie { get; set; }
-        public List<Machine> Machines { get; set; } = new List<Machine>();
+        public int id { get; set; }
+        public string nomLaverie { get; set; }
+        public List<Machine> machines { get; set; } = new List<Machine>();
     }
 }

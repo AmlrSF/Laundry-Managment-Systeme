@@ -10,7 +10,7 @@ public class ConfigurationRepo
 {
     private readonly AppDbContext _dbContext;
 
-    
+
     public ConfigurationRepo(AppDbContext dbContext)
     {
         _dbContext = dbContext;
@@ -20,7 +20,7 @@ public class ConfigurationRepo
     {
         var users = new List<User>();
 
-       
+
         using (var connection = _dbContext.CreateConnection())
         {
             connection.Open();
@@ -36,7 +36,7 @@ public class ConfigurationRepo
                     m.Type AS MachineType, 
                     m.Status AS MachineStatus, 
                     c.Id AS CycleId, 
-                    c.Date AS CycleDate, 
+                   
                     c.Price AS CyclePrice
                 FROM 
                     Proprietaire p
@@ -47,7 +47,7 @@ public class ConfigurationRepo
                 LEFT JOIN 
                     Cycle c ON m.Id = c.MachineId
                 ORDER BY 
-                    p.Id, l.Id, m.Id, c.Date";
+                    p.Id, l.Id, m.Id";
 
             // Create the SQL command using the connection obtained from AppDbContext
             using (var command = new SqlCommand(query, (SqlConnection)connection))
@@ -60,14 +60,14 @@ public class ConfigurationRepo
                     int proprietaireId = reader.GetInt32(0);
 
                     // Create or update the Proprietaire (User) object
-                    if (currentProprietaire == null || currentProprietaire.Id != proprietaireId)
+                    if (currentProprietaire == null || currentProprietaire.id != proprietaireId)
                     {
                         currentProprietaire = new User
                         {
-                            Id = proprietaireId,
-                            Name = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Laundries = new List<Laundry>()
+                            id = proprietaireId,
+                            name = reader.GetString(1),
+                            email = reader.GetString(2),
+                            laundries = new List<Laundry>()
                         };
                         users.Add(currentProprietaire);
                     }
@@ -75,46 +75,37 @@ public class ConfigurationRepo
                     int? laverieId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3);
                     if (laverieId.HasValue)
                     {
-                        var laverie = currentProprietaire.Laundries
-                            .Find(l => l.Id == laverieId.Value) ?? new Laundry
+                        var laverie = currentProprietaire.laundries
+                            .Find(l => l.id == laverieId.Value) ?? new Laundry
                             {
-                                Id = laverieId.Value,
-                                NomLaverie = reader.GetString(4),
-                                Machines = new List<Machine>()
+                                id = laverieId.Value,
+                                nomLaverie = reader.GetString(4),
+                                machines = new List<Machine>()
                             };
 
-                        if (!currentProprietaire.Laundries.Contains(laverie))
+                        if (!currentProprietaire.laundries.Contains(laverie))
                         {
-                            currentProprietaire.Laundries.Add(laverie);
+                            currentProprietaire.laundries.Add(laverie);
                         }
 
                         int? machineId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5);
                         if (machineId.HasValue)
                         {
-                            var machine = laverie.Machines
-                                .Find(m => m.Id == machineId.Value) ?? new Machine
+                            var machine = laverie.machines
+                                .Find(m => m.id == machineId.Value) ?? new Machine
                                 {
-                                    Id = machineId.Value,
-                                    Type = reader.GetString(6),
-                                    Status = reader.GetBoolean(7),
-                                    Cycles = new List<Cycle>()
+                                    id = machineId.Value,
+                                    type = reader.GetString(6),
+                                    status = reader.GetBoolean(7),
+                                    cycles = new List<Cycle>()
                                 };
 
-                            if (!laverie.Machines.Contains(machine))
+                            if (!laverie.machines.Contains(machine))
                             {
-                                laverie.Machines.Add(machine);
+                                laverie.machines.Add(machine);
                             }
 
-                            if (!reader.IsDBNull(8))
-                            {
-                                var cycle = new Cycle
-                                {
-                                    Id = reader.GetInt32(9),
-                                    Date = reader.GetDateTime(10),
-                                    Price = reader.GetDecimal(11)
-                                };
-                                machine.Cycles.Add(cycle);
-                            }
+
                         }
                     }
                 }
@@ -123,4 +114,70 @@ public class ConfigurationRepo
 
         return users;
     }
+
+    public async Task<bool> ToggleMachineAsync(int machineId)
+    {
+        using (var connection = _dbContext.CreateConnection())
+        {
+            connection.Open();
+
+
+            string getStatusQuery = @"
+            SELECT Status 
+            FROM Machine 
+            WHERE Id = @MachineId";
+
+            bool currentStatus = false;
+
+            using (var getStatusCommand = new SqlCommand(getStatusQuery, (SqlConnection)connection))
+            {
+                getStatusCommand.Parameters.AddWithValue("@MachineId", machineId);
+
+                var result = await getStatusCommand.ExecuteScalarAsync();
+                if (result == null) return false;
+                currentStatus = (bool)result;
+            }
+
+           
+            string toggleStatusQuery = @"
+            UPDATE Machine 
+            SET Status = @NewStatus 
+            WHERE Id = @MachineId";
+
+            using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
+            {
+                toggleStatusCommand.Parameters.AddWithValue("@NewStatus", !currentStatus);
+                toggleStatusCommand.Parameters.AddWithValue("@MachineId", machineId);
+
+                int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
+                return rowsAffected > 0;
+            }
+        }
+    }
+
+
+
+    public async Task AddCycleAsync(Cycle cycle)
+    {
+        using (var connection = _dbContext.CreateConnection())
+        {
+            connection.Open();
+
+            // Insert the new cycle into the database without retrieving the ID
+            string query = @"
+            INSERT INTO Cycle (MachineId, Price, CycleDuration)
+            VALUES (@MachineId, @Price , @CycleDuration);";
+
+            using (var command = new SqlCommand(query, (SqlConnection)connection))
+            {
+                command.Parameters.AddWithValue("@MachineId", cycle.machineId);
+                command.Parameters.AddWithValue("@Price", cycle.price);
+                command.Parameters.AddWithValue("@CycleDuration", cycle.cycleDuration);
+
+                await command.ExecuteNonQueryAsync(); // Simply execute the insertion
+            }
+        }
+    }
+
+
 }

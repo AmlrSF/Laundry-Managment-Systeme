@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Transactions;
 
 namespace Laverie.Domain.Entities
 {
     public class Cycle
     {
-        public int Id { get; set; }
-        public DateTime Date { get; set; }
-        public decimal Price { get; set; }
-        public int MachineId { get; set; }
+        public int id { get; set; }
+        public decimal price { get; set; }
+        public int machineId { get; set; }
+        public int cycleDuration { get; set; }
+        public List<Action> transactions { get; set; }
     }
 
 }

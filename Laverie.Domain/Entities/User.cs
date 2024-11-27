@@ -8,11 +8,11 @@ namespace Laverie.Domain.Entities
 {
     public class User
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public string Password { get; set; }
-        public string Email { get; set; }
-        public int Age { get; set; }
-        public List<Laundry> Laundries { get; set; } = new List<Laundry>();
+        public int id { get; set; }
+        public string name { get; set; }
+        public string password { get; set; }
+        public string email { get; set; }
+        public int age { get; set; }
+        public List<Laundry> laundries { get; set; } = new List<Laundry>();
     }
 }

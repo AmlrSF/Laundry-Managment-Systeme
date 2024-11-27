@@ -8,11 +8,10 @@ namespace Laverie.Domain.Entities
 {
     public class Machine
     {
-        public int Id { get; set; }
-        public string LaverieName { get; set; }
+        public int id { get; set; }
         
-        public bool Status { get; set; }
-        public string Type { get; set; }
-        public List<Cycle> Cycles { get; set; } = new List<Cycle>();
+        public bool status { get; set; }
+        public string type { get; set; }
+        public List<Cycle> cycles { get; set; } = new List<Cycle>();
     }
 }

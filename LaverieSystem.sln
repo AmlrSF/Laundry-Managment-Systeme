@@ -9,8 +9,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Laverie.Domain", "Laverie.D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Laverie.SimulationApp", "Laverie.SimulationApp\Laverie.SimulationApp.csproj", "{A5F747D5-EDA5-4FB4-B3AE-9C9C35975EF2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1", "WebApplication1\WebApplication1.csproj", "{74E0A8D6-4E56-4A5C-AE5A-BF9F32959839}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,10 +27,6 @@ Global
 		{A5F747D5-EDA5-4FB4-B3AE-9C9C35975EF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A5F747D5-EDA5-4FB4-B3AE-9C9C35975EF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A5F747D5-EDA5-4FB4-B3AE-9C9C35975EF2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{74E0A8D6-4E56-4A5C-AE5A-BF9F32959839}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{74E0A8D6-4E56-4A5C-AE5A-BF9F32959839}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{74E0A8D6-4E56-4A5C-AE5A-BF9F32959839}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{74E0A8D6-4E56-4A5C-AE5A-BF9F32959839}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

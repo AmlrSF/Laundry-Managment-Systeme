@@ -16,5 +16,17 @@ namespace Laverie.API.Services
         {
             return await _configurationRepo.GetConfigAsync();
         }
+
+        public async Task<bool> ToggleMachineAsync(int machineId)
+        {
+            return await _configurationRepo.ToggleMachineAsync(machineId);
+        }
+
+        public async Task AddCycleAsync(Cycle cycle)
+        {
+            await _configurationRepo.AddCycleAsync(cycle);
+        }
+
+
     }
 }
