@@ -12,7 +12,7 @@ namespace Laverie.Domain.Entities
         public int id { get; set; }
         public decimal price { get; set; }
         public int machineId { get; set; }
-        public int cycleDuration { get; set; }
+        public string cycleDuration { get; set; }
         public List<Action> transactions { get; set; }
     }
 

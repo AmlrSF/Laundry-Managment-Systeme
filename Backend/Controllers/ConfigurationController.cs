@@ -30,10 +30,10 @@ namespace Laverie.API.Controllers
         }
 
 
-        [HttpPut("toggle-machine/{id}")]
-        public async Task<IActionResult> ToggleMachine(int id)
+        [HttpPost("startMachine")]
+        public async Task<IActionResult> startMachine([FromBody] Cycle cycle)
         {
-            var success = await _configurationService.ToggleMachineAsync(id);
+            var success = await _configurationService.starteMachineAsync(cycle);
 
             if (!success)
             {
@@ -43,16 +43,20 @@ namespace Laverie.API.Controllers
             return Ok(new { Message = "Machine status toggled successfully." });
         }
 
-        [HttpPost("addCycle")]
-        public async Task<ActionResult> AddCycle([FromBody] Cycle cycle)
+
+        [HttpPost("stopMachine")]
+        public async Task<IActionResult> stopMachine([FromBody] Cycle cycle)
         {
-            if (cycle == null || cycle.machineId <= 0 || cycle.price <= 0)
+            var success = await _configurationService.stopeMachineAsync(cycle);
+
+            if (!success)
             {
-                return BadRequest("Invalid cycle data.");
+                return NotFound(new { Message = "Machine not found or failed to toggle status." });
             }
 
-            await _configurationService.AddCycleAsync(cycle);
-            return CreatedAtAction(nameof(AddCycle), new { id = cycle.id }, cycle);
+            return Ok(new { Message = "Machine status toggled successfully." });
         }
+
+
     }
 }

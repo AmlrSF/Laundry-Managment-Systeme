@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Laverie.Domain.Entities;
 using Laverie.SimulationApp.Services;
 
 namespace LaverieConsoleApp
@@ -62,17 +62,16 @@ namespace LaverieConsoleApp
 
             try
             {
-                // Fetch the configuration data
+                // Fetch all owners
                 var owners = await _laundryService.GetConfigurationAsync();
 
-                // Check if there is any data
                 if (owners.Count == 0)
                 {
                     Console.WriteLine("No data found.");
                     return;
                 }
 
-                // Display the list of owners
+                // Display list of owners
                 Console.WriteLine("List of Users:");
                 for (int i = 0; i < owners.Count; i++)
                 {
@@ -81,24 +80,19 @@ namespace LaverieConsoleApp
                 }
 
                 Console.Write("\nSelect a user by number: ");
-                int selectedUserIndex = int.Parse(Console.ReadLine()) - 1;
-
-                // Validate the selection
-                if (selectedUserIndex < 0 || selectedUserIndex >= owners.Count)
+                if (!int.TryParse(Console.ReadLine(), out int selectedUserIndex) || selectedUserIndex - 1 < 0 || selectedUserIndex - 1 >= owners.Count)
                 {
                     Console.WriteLine("Invalid selection. Returning to main menu...");
                     Console.ReadKey();
                     return;
                 }
 
-                var selectedOwner = owners[selectedUserIndex];
-
+                var selectedOwner = owners[selectedUserIndex - 1];
                 Console.WriteLine($"\nYou selected: {selectedOwner.name ?? "Unknown"} (Email: {selectedOwner.email ?? "No Email"})");
 
-                // Check if the selected user has laundries
+                // Display laundries
                 if (selectedOwner.laundries?.Count > 0)
                 {
-                    // Display the laundries of the selected user
                     Console.WriteLine("\nLaundries:");
                     for (int i = 0; i < selectedOwner.laundries.Count; i++)
                     {
@@ -106,20 +100,17 @@ namespace LaverieConsoleApp
                     }
 
                     Console.Write("\nSelect a laundry by number: ");
-                    int selectedLaundryIndex = int.Parse(Console.ReadLine()) - 1;
-
-                    // Validate the selection
-                    if (selectedLaundryIndex < 0 || selectedLaundryIndex >= selectedOwner.laundries.Count)
+                    if (!int.TryParse(Console.ReadLine(), out int selectedLaundryIndex) || selectedLaundryIndex - 1 < 0 || selectedLaundryIndex - 1 >= selectedOwner.laundries.Count)
                     {
                         Console.WriteLine("Invalid selection. Returning to main menu...");
                         Console.ReadKey();
                         return;
                     }
 
-                    var selectedLaundry = selectedOwner.laundries[selectedLaundryIndex];
-
+                    var selectedLaundry = selectedOwner.laundries[selectedLaundryIndex - 1];
                     Console.WriteLine($"\nYou selected: {selectedLaundry.nomLaverie ?? "Unnamed"}");
 
+                    // Display machines
                     if (selectedLaundry.machines?.Count > 0)
                     {
                         Console.WriteLine("\nMachines:");
@@ -130,38 +121,59 @@ namespace LaverieConsoleApp
                         }
 
                         Console.Write("\nSelect a machine by number: ");
-                        int selectedMachineIndex = int.Parse(Console.ReadLine()) - 1;
-
-                        // Validate the selection
-                        if (selectedMachineIndex < 0 || selectedMachineIndex >= selectedLaundry.machines.Count)
+                        if (!int.TryParse(Console.ReadLine(), out int selectedMachineIndex) || selectedMachineIndex - 1 < 0 || selectedMachineIndex - 1 >= selectedLaundry.machines.Count)
                         {
                             Console.WriteLine("Invalid selection. Returning to main menu...");
                             Console.ReadKey();
                             return;
                         }
 
-                        var selectedMachine = selectedLaundry.machines[selectedMachineIndex];
-
+                        var selectedMachine = selectedLaundry.machines[selectedMachineIndex - 1];
                         Console.WriteLine($"\nYou selected Machine {selectedMachine.id}: {selectedMachine.type ?? "Unknown"}");
 
-                        Console.WriteLine("\nEnter the cycle details:");
-
-                        Console.Write("Price: ");
-                        decimal cyclePrice = decimal.Parse(Console.ReadLine());
-
-                        Console.Write("Duration (in minutes): ");
-                        int cycleDuration = int.Parse(Console.ReadLine());
-
-                        // Send the cycle data to the server
-                        var success = await _laundryService.AddCycleAsync(selectedMachine.id, cyclePrice, cycleDuration);
-
-                        if (success)
+                        // Display cycle details for the selected machine
+                        if (selectedMachine.cycles?.Count > 0)
                         {
-                            Console.WriteLine($"Cycle added successfully! Machine {selectedMachine.id} is now working with cycle details (Price: {cyclePrice}, Duration: {cycleDuration}).");
+                            Console.WriteLine("\nCycles:");
+                            for (int i = 0; i < selectedMachine.cycles.Count; i++)
+                            {
+                                var cycle = selectedMachine.cycles[i];
+                                Console.WriteLine($"{i + 1}. Duration: {cycle.cycleDuration} - Price: {cycle.price}");
+                            }
+
+                            Console.Write("\nSelect a cycle by number: ");
+                            if (!int.TryParse(Console.ReadLine(), out int selectedCycleIndex) || selectedCycleIndex - 1 < 0 || selectedCycleIndex - 1 >= selectedMachine.cycles.Count)
+                            {
+                                Console.WriteLine("Invalid selection. Returning to main menu...");
+                                Console.ReadKey();
+                                return;
+                            }
+
+                            var selectedCycle = selectedMachine.cycles[selectedCycleIndex - 1];
+                            Console.WriteLine($"\nYou selected: Duration - {selectedCycle.cycleDuration}, Price - {selectedCycle.price}");
+
+                            // Start or Stop Machine Options
+                            Console.WriteLine("\nOptions: 1. Start Machine 2. Stop Machine");
+                            Console.Write("Select an option: ");
+                            var option = Console.ReadLine();
+
+                            switch (option)
+                            {
+                                case "1":
+                                    await _laundryService.StartMachineStateAsync(selectedCycle);
+                                    StartCycleTimer(selectedCycle);
+                                    break;
+                                case "2":
+                                    await _laundryService.StopMachineStateAsync(selectedCycle);
+                                    break;
+                                default:
+                                    Console.WriteLine("Invalid option.");
+                                    break;
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("Failed to add cycle.");
+                            Console.WriteLine("No cycles available for this machine.");
                         }
                     }
                     else
@@ -183,6 +195,36 @@ namespace LaverieConsoleApp
             Console.ReadKey();
         }
 
+        static void StartCycleTimer(Cycle selectedCycle)
+        {
+            // Convert cycleDuration from string to int safely
+            if (int.TryParse(selectedCycle.cycleDuration, out int cycleDurationInMinutes))
+            {
+                // Start a timer that will automatically stop the machine after the cycle duration
+                var timer = new System.Timers.Timer(60000); // Trigger every minute
+                timer.Elapsed += async (sender, e) =>
+                {
+                    cycleDurationInMinutes--;
+
+                    if (cycleDurationInMinutes <= 0)
+                    {
+                        timer.Stop();
+                        Console.WriteLine("Cycle completed. Stopping the machine...");
+                        await _laundryService.StopMachineStateAsync(selectedCycle); // Stop the machine
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Cycle in progress. Remaining time: {cycleDurationInMinutes} minutes.");
+                    }
+                };
+
+                timer.Start();
+            }
+            else
+            {
+                Console.WriteLine("Invalid cycle duration. Unable to start the timer.");
+            }
+        }
 
     }
 }

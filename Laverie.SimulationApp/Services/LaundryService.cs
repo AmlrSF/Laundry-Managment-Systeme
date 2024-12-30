@@ -50,64 +50,24 @@ namespace Laverie.SimulationApp.Services
         }
 
 
-        public async Task<bool> AddCycleAsync(int machineId, decimal price, int cycleDuration)
+
+        public async Task<bool> StartMachineStateAsync(Cycle cycle)
         {
-        
-            bool machineToggled = await ToggleMachineStateAsync(machineId);
-
-            if (!machineToggled)
-            {
-                Console.WriteLine("Failed to toggle the machine state.");
-                return false;
-            }
-
-            var cycleData = new
-            {
-                machineId = machineId,
-                price = price,
-                cycleDuration = cycleDuration,
-                transactions = new List<object>()
-            };
-
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("api/Configuration/addCycle", cycleData);
+                // Construct the URL to call the backend API
+                string url = $"api/Configuration/startMachine";
+
+                // Send a POST request to start the machine
+                var response = await _httpClient.PostAsJsonAsync(url, cycle);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine("Cycle added successfully!");
+                    Console.WriteLine("Machine started successfully.");
                     return true;
                 }
                 else
                 {
-                    Console.WriteLine($"Error: {response.StatusCode} - {response.ReasonPhrase}");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred while adding the cycle: {ex.Message}");
-                return false;
-            }
-        }
-        public async Task<bool> ToggleMachineStateAsync(int machineId)
-        {
-            try
-            {
-                // Construct the URL to call the backend API (ensure it matches your backend route)
-                string url = $"api/Configuration/toggle-machine/{machineId}";
-
-                // Send a PUT request to toggle the machine's state
-                var response = await _httpClient.PutAsJsonAsync(url, new { machineId = machineId });
-
-                if (response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine("Machine state toggled successfully.");
-                    return true;
-                }
-                else
-                {
-                    // Handle error and provide useful feedback
                     var errorResponse = await response.Content.ReadAsStringAsync();
                     Console.WriteLine($"Error: {response.StatusCode} - {errorResponse}");
                     return false;
@@ -115,10 +75,40 @@ namespace Laverie.SimulationApp.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred while toggling the machine state: {ex.Message}");
+                Console.WriteLine($"An error occurred while starting the machine: {ex.Message}");
                 return false;
             }
         }
+
+        public async Task<bool> StopMachineStateAsync(Cycle cycle)
+        {
+            try
+            {
+                // Construct the URL to call the backend API
+                string url = $"api/Configuration/stopMachine";
+
+                // Send a POST request to stop the machine
+                var response = await _httpClient.PostAsJsonAsync(url, cycle);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("Machine stopped successfully.");
+                    return true;
+                }
+                else
+                {
+                    var errorResponse = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Error: {response.StatusCode} - {errorResponse}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while stopping the machine: {ex.Message}");
+                return false;
+            }
+        }
+
 
     }
 }

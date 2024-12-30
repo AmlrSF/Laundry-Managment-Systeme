@@ -20,36 +20,35 @@ public class ConfigurationRepo
     {
         var users = new List<User>();
 
-
         using (var connection = _dbContext.CreateConnection())
         {
             connection.Open();
 
             string query = @"
-                SELECT 
-                    p.Id AS ProprietaireId, 
-                    p.Name AS ProprietaireName, 
-                    p.Email AS ProprietaireEmail, 
-                    l.Id AS LaverieId, 
-                    l.NomLaverie AS LaverieName, 
-                    m.Id AS MachineId, 
-                    m.Type AS MachineType, 
-                    m.Status AS MachineStatus, 
-                    c.Id AS CycleId, 
-                   
-                    c.Price AS CyclePrice
-                FROM 
-                    Proprietaire p
-                LEFT JOIN 
-                    Laverie l ON p.Id = l.ProprietaireId
-                LEFT JOIN 
-                    Machine m ON l.Id = m.LaverieId
-                LEFT JOIN 
-                    Cycle c ON m.Id = c.MachineId
-                ORDER BY 
-                    p.Id, l.Id, m.Id";
+            SELECT 
+                p.Id AS ProprietaireId, 
+                p.Name AS ProprietaireName, 
+                p.Email AS ProprietaireEmail, 
+                l.Id AS LaverieId, 
+                l.NomLaverie AS LaverieName, 
+                m.Id AS MachineId, 
+                m.Type AS MachineType, 
+                m.Status AS MachineStatus, 
+                c.Id AS CycleId, 
+                c.Price AS CyclePrice, 
+                c.CycleDuration AS CycleDuration,
+                c.machineId As machineId
+            FROM 
+                Proprietaire p
+            LEFT JOIN 
+                Laverie l ON p.Id = l.ProprietaireId
+            LEFT JOIN 
+                Machine m ON l.Id = m.LaverieId
+            LEFT JOIN 
+                Cycle c ON m.Id = c.MachineId
+            ORDER BY 
+                p.Id, l.Id, m.Id, c.Id";
 
-            // Create the SQL command using the connection obtained from AppDbContext
             using (var command = new SqlCommand(query, (SqlConnection)connection))
             using (var reader = await command.ExecuteReaderAsync())
             {
@@ -59,7 +58,6 @@ public class ConfigurationRepo
                 {
                     int proprietaireId = reader.GetInt32(0);
 
-                    // Create or update the Proprietaire (User) object
                     if (currentProprietaire == null || currentProprietaire.id != proprietaireId)
                     {
                         currentProprietaire = new User
@@ -105,7 +103,22 @@ public class ConfigurationRepo
                                 laverie.machines.Add(machine);
                             }
 
+                            int? cycleId = reader.IsDBNull(8) ? (int?)null : reader.GetInt32(8);
+                            if (cycleId.HasValue)
+                            {
+                                var cycle = new Cycle
+                                {
+                                    id = cycleId.Value,
+                                    price = reader.GetDecimal(9),
+                                    cycleDuration = reader.GetString(10),
+                                    machineId = reader.GetInt32(11)
+                                };
 
+                                if (!machine.cycles.Any(c => c.id == cycle.id))
+                                {
+                                    machine.cycles.Add(cycle);
+                                }
+                            }
                         }
                     }
                 }
@@ -115,69 +128,76 @@ public class ConfigurationRepo
         return users;
     }
 
-    public async Task<bool> ToggleMachineAsync(int machineId)
+    public async Task<bool> StartMachine(Cycle cycle)
     {
         using (var connection = _dbContext.CreateConnection())
         {
             connection.Open();
 
-
-            string getStatusQuery = @"
-            SELECT Status 
-            FROM Machine 
-            WHERE Id = @MachineId";
-
-            bool currentStatus = false;
-
-            using (var getStatusCommand = new SqlCommand(getStatusQuery, (SqlConnection)connection))
-            {
-                getStatusCommand.Parameters.AddWithValue("@MachineId", machineId);
-
-                var result = await getStatusCommand.ExecuteScalarAsync();
-                if (result == null) return false;
-                currentStatus = (bool)result;
-            }
-
-           
             string toggleStatusQuery = @"
-            UPDATE Machine 
-            SET Status = @NewStatus 
-            WHERE Id = @MachineId";
+        UPDATE Machine 
+        SET Status = @NewStatus 
+        WHERE Id = @MachineId";
 
             using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
             {
-                toggleStatusCommand.Parameters.AddWithValue("@NewStatus", !currentStatus);
-                toggleStatusCommand.Parameters.AddWithValue("@MachineId", machineId);
+                toggleStatusCommand.Parameters.AddWithValue("@NewStatus", true);
+                toggleStatusCommand.Parameters.AddWithValue("@MachineId", cycle.machineId);
+
+                int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
+
+                if (rowsAffected > 0)
+                {
+                    // Calculate StartTime and EndTime
+                    DateTime startTime = DateTime.Now;
+                    int durationInMinutes = int.Parse(cycle.CycleDuration); // Convert duration from string to integer
+                    DateTime endTime = startTime.AddMinutes(durationInMinutes);
+
+                    // Create a new action for the cycle
+                    string insertActionQuery = @"
+                INSERT INTO Action (CycleId, StartTime, EndTime)
+                VALUES (@CycleId, @StartTime, @EndTime)";
+
+                    using (var insertActionCommand = new SqlCommand(insertActionQuery, (SqlConnection)connection))
+                    {
+                        insertActionCommand.Parameters.AddWithValue("@CycleId", cycle.id);  // CycleId from the passed cycle object
+                        insertActionCommand.Parameters.AddWithValue("@StartTime", startTime);  // Current timestamp as StartTime
+                        insertActionCommand.Parameters.AddWithValue("@EndTime", endTime);  // EndTime calculated above
+
+                        int actionRowsAffected = await insertActionCommand.ExecuteNonQueryAsync();
+
+                        // If the action insertion is successful, return true
+                        return actionRowsAffected > 0;
+                    }
+                }
+                else
+                {
+                    return false; // Machine status update failed
+                }
+            }
+        }
+    }
+
+    public async Task<bool> StopMachine(Cycle cycle)
+    {
+        using (var connection = _dbContext.CreateConnection())
+        {
+            connection.Open();
+
+            string toggleStatusQuery = @"
+        UPDATE Machine 
+        SET Status = @NewStatus 
+        WHERE Id = @MachineId";
+
+            using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
+            {
+                toggleStatusCommand.Parameters.AddWithValue("@NewStatus", false);
+                toggleStatusCommand.Parameters.AddWithValue("@MachineId", cycle.machineId);
 
                 int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
                 return rowsAffected > 0;
             }
         }
     }
-
-
-
-    public async Task AddCycleAsync(Cycle cycle)
-    {
-        using (var connection = _dbContext.CreateConnection())
-        {
-            connection.Open();
-
-            // Insert the new cycle into the database without retrieving the ID
-            string query = @"
-            INSERT INTO Cycle (MachineId, Price, CycleDuration)
-            VALUES (@MachineId, @Price , @CycleDuration);";
-
-            using (var command = new SqlCommand(query, (SqlConnection)connection))
-            {
-                command.Parameters.AddWithValue("@MachineId", cycle.machineId);
-                command.Parameters.AddWithValue("@Price", cycle.price);
-                command.Parameters.AddWithValue("@CycleDuration", cycle.cycleDuration);
-
-                await command.ExecuteNonQueryAsync(); // Simply execute the insertion
-            }
-        }
-    }
-
 
 }
