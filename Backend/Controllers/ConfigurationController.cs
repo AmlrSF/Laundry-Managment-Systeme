@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Laverie.Domain.Entities;
+using Laverie.Domain.DTOS;
 
 namespace Laverie.API.Controllers
 {
@@ -31,9 +32,9 @@ namespace Laverie.API.Controllers
 
 
         [HttpPost("startMachine")]
-        public async Task<IActionResult> startMachine([FromBody] Cycle cycle)
+        public async Task<IActionResult> StartMachine([FromBody] StartMachineRequest request)
         {
-            var success = await _configurationService.starteMachineAsync(cycle);
+            var success = await _configurationService.starteMachineAsync(request.MachineId, request.IdCycle);
 
             if (!success)
             {
@@ -43,11 +44,10 @@ namespace Laverie.API.Controllers
             return Ok(new { Message = "Machine status toggled successfully." });
         }
 
-
         [HttpPost("stopMachine")]
-        public async Task<IActionResult> stopMachine([FromBody] Cycle cycle)
+        public async Task<IActionResult> StopMachine([FromBody] int machineId)
         {
-            var success = await _configurationService.stopeMachineAsync(cycle);
+            var success = await _configurationService.stopeMachineAsync(machineId);
 
             if (!success)
             {

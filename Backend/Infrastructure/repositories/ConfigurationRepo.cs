@@ -6,6 +6,7 @@ using Laverie.Domain.Entities;
 using Laverie.API.Infrastructure.context; 
 using Microsoft.Data.SqlClient;
 
+
 public class ConfigurationRepo
 {
     private readonly AppDbContext _dbContext;
@@ -37,7 +38,10 @@ public class ConfigurationRepo
                 c.Id AS CycleId, 
                 c.Price AS CyclePrice, 
                 c.CycleDuration AS CycleDuration,
-                c.machineId As machineId
+                c.machineId As machineId,
+                a.Id as ActionId,
+                a.CycleId as cycleActionId,
+                a.StartTime as startTime
             FROM 
                 Proprietaire p
             LEFT JOIN 
@@ -46,8 +50,10 @@ public class ConfigurationRepo
                 Machine m ON l.Id = m.LaverieId
             LEFT JOIN 
                 Cycle c ON m.Id = c.MachineId
+            LEFT JOIN 
+                Action a ON c.Id = a.CycleId
             ORDER BY 
-                p.Id, l.Id, m.Id, c.Id";
+                p.Id, l.Id, m.Id, c.Id, a.Id";
 
             using (var command = new SqlCommand(query, (SqlConnection)connection))
             using (var reader = await command.ExecuteReaderAsync())
@@ -78,7 +84,7 @@ public class ConfigurationRepo
                             {
                                 id = laverieId.Value,
                                 nomLaverie = reader.GetString(4),
-                                machines = new List<Machine>()
+                                machines = new List<Laverie.Domain.Entities.Machine>()
                             };
 
                         if (!currentProprietaire.laundries.Contains(laverie))
@@ -111,93 +117,116 @@ public class ConfigurationRepo
                                     id = cycleId.Value,
                                     price = reader.GetDecimal(9),
                                     cycleDuration = reader.GetString(10),
-                                    machineId = reader.GetInt32(11)
+                                    machineId = reader.GetInt32(11),
+                                    transactions = new List<Laverie.Domain.Entities.Action>() 
                                 };
+
 
                                 if (!machine.cycles.Any(c => c.id == cycle.id))
                                 {
                                     machine.cycles.Add(cycle);
+                                }
+
+
+                                int? actionId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12);
+
+                                if (actionId.HasValue)
+                                {
+                                    var action = new Laverie.Domain.Entities.Action
+                                    {
+                                        Id = actionId.Value,
+                                        CycleId = reader.GetInt32(13),
+                                        StartTime = reader.GetDateTime(14),
+                                    };
+
+
+                                    if (!cycle.transactions.Any(c => c.Id == action.Id))
+                                    {
+                                        cycle.transactions.Add(action);
+                                    }
+
                                 }
                             }
                         }
                     }
                 }
             }
+            return users;
         }
 
-        return users;
     }
 
-    public async Task<bool> StartMachine(Cycle cycle)
-    {
-        using (var connection = _dbContext.CreateConnection())
-        {
-            connection.Open();
 
-            string toggleStatusQuery = @"
+        public async Task<bool> StartMachine(int MachineId, int IdCycle)
+        {
+            using (var connection = _dbContext.CreateConnection())
+            {
+                connection.Open();
+
+                string toggleStatusQuery = @"
         UPDATE Machine 
         SET Status = @NewStatus 
         WHERE Id = @MachineId";
 
-            using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
-            {
-                toggleStatusCommand.Parameters.AddWithValue("@NewStatus", true);
-                toggleStatusCommand.Parameters.AddWithValue("@MachineId", cycle.machineId);
-
-                int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
-
-                if (rowsAffected > 0)
+                using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
                 {
-                    // Calculate StartTime and EndTime
-                    DateTime startTime = DateTime.Now;
-                    int durationInMinutes = int.Parse(cycle.CycleDuration); // Convert duration from string to integer
-                    DateTime endTime = startTime.AddMinutes(durationInMinutes);
+                    toggleStatusCommand.Parameters.AddWithValue("@NewStatus", true);
+                    toggleStatusCommand.Parameters.AddWithValue("@MachineId", MachineId);
 
-                    // Create a new action for the cycle
-                    string insertActionQuery = @"
-                INSERT INTO Action (CycleId, StartTime, EndTime)
-                VALUES (@CycleId, @StartTime, @EndTime)";
+                    int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
 
-                    using (var insertActionCommand = new SqlCommand(insertActionQuery, (SqlConnection)connection))
+                    if (rowsAffected > 0)
                     {
-                        insertActionCommand.Parameters.AddWithValue("@CycleId", cycle.id);  // CycleId from the passed cycle object
-                        insertActionCommand.Parameters.AddWithValue("@StartTime", startTime);  // Current timestamp as StartTime
-                        insertActionCommand.Parameters.AddWithValue("@EndTime", endTime);  // EndTime calculated above
+                        // Calculate StartTime and EndTime
+                        DateTime startTime = DateTime.Now;
 
-                        int actionRowsAffected = await insertActionCommand.ExecuteNonQueryAsync();
 
-                        // If the action insertion is successful, return true
-                        return actionRowsAffected > 0;
+                        // Create a new action for the cycle
+                        string insertActionQuery = @"
+                INSERT INTO Action (CycleId, StartTime)
+                VALUES (@CycleId, @StartTime)";
+
+                        using (var insertActionCommand = new SqlCommand(insertActionQuery, (SqlConnection)connection))
+                        {
+                            insertActionCommand.Parameters.AddWithValue("@CycleId", IdCycle);  // CycleId from the passed cycle object
+                            insertActionCommand.Parameters.AddWithValue("@StartTime", startTime);  // Current timestamp as StartTime
+
+
+                            int actionRowsAffected = await insertActionCommand.ExecuteNonQueryAsync();
+
+                            // If the action insertion is successful, return true
+                            return actionRowsAffected > 0;
+                        }
+                    }
+                    else
+                    {
+                        return false; // Machine status update failed
                     }
                 }
-                else
-                {
-                    return false; // Machine status update failed
-                }
             }
         }
-    }
 
-    public async Task<bool> StopMachine(Cycle cycle)
-    {
-        using (var connection = _dbContext.CreateConnection())
+        public async Task<bool> StopMachine(int MachineId)
         {
-            connection.Open();
+            using (var connection = _dbContext.CreateConnection())
+            {
+                connection.Open();
 
-            string toggleStatusQuery = @"
+                string toggleStatusQuery = @"
         UPDATE Machine 
         SET Status = @NewStatus 
         WHERE Id = @MachineId";
 
-            using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
-            {
-                toggleStatusCommand.Parameters.AddWithValue("@NewStatus", false);
-                toggleStatusCommand.Parameters.AddWithValue("@MachineId", cycle.machineId);
+                using (var toggleStatusCommand = new SqlCommand(toggleStatusQuery, (SqlConnection)connection))
+                {
+                    toggleStatusCommand.Parameters.AddWithValue("@NewStatus", false);
+                    toggleStatusCommand.Parameters.AddWithValue("@MachineId", MachineId);
 
-                int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
-                return rowsAffected > 0;
+                    int rowsAffected = await toggleStatusCommand.ExecuteNonQueryAsync();
+                    return rowsAffected > 0;
+                }
             }
         }
+
     }
 
-}

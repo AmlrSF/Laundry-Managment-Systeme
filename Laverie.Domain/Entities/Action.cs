@@ -11,6 +11,6 @@ namespace Laverie.Domain.Entities
         public int Id { get; set; } // Primary key
         public int CycleId { get; set; } // Foreign key to Cycle
         public DateTime StartTime { get; set; } // When the cycle starts
-        public DateTime? EndTime { get; set; }
+        
     }
 }

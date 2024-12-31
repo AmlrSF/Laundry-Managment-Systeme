@@ -1,4 +1,5 @@
-﻿using Laverie.Domain.Entities;
+﻿using Azure.Core;
+using Laverie.Domain.Entities;
 using Laverie.Domain.Interface;
 
 namespace Laverie.API.Services
@@ -17,13 +18,13 @@ namespace Laverie.API.Services
             return await _configurationRepo.GetConfigAsync();
         }
 
-        public async Task<bool> starteMachineAsync(Cycle cycle)
+        public async Task<bool> starteMachineAsync(int MachineId, int IdCycle)
         {
-            return await _configurationRepo.StartMachine(cycle);
+            return await _configurationRepo.StartMachine(MachineId, IdCycle);
         }
-        public async Task<bool> stopeMachineAsync(Cycle cycle)
+        public async Task<bool> stopeMachineAsync(int MachineId)
         {
-            return await _configurationRepo.StopMachine(cycle);
+            return await _configurationRepo.StopMachine(MachineId);
         }
 
 

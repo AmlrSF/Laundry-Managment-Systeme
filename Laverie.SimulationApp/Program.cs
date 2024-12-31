@@ -149,22 +149,24 @@ namespace LaverieConsoleApp
                                 return;
                             }
 
-                            var selectedCycle = selectedMachine.cycles[selectedCycleIndex - 1];
+                            Cycle selectedCycle = selectedMachine.cycles[selectedCycleIndex - 1];
                             Console.WriteLine($"\nYou selected: Duration - {selectedCycle.cycleDuration}, Price - {selectedCycle.price}");
 
                             // Start or Stop Machine Options
-                            Console.WriteLine("\nOptions: 1. Start Machine 2. Stop Machine");
+                            Console.WriteLine("\nOptions:\n1. Start Machine \n2. Stop Machine");
                             Console.Write("Select an option: ");
                             var option = Console.ReadLine();
+
+                         
 
                             switch (option)
                             {
                                 case "1":
-                                    await _laundryService.StartMachineStateAsync(selectedCycle);
+                                    await _laundryService.StartMachineStateAsync(selectedCycle.machineId, selectedCycle.id);
                                     StartCycleTimer(selectedCycle);
                                     break;
                                 case "2":
-                                    await _laundryService.StopMachineStateAsync(selectedCycle);
+                                    await _laundryService.StopMachineStateAsync(selectedCycle.machineId);
                                     break;
                                 default:
                                     Console.WriteLine("Invalid option.");
@@ -198,33 +200,34 @@ namespace LaverieConsoleApp
         static void StartCycleTimer(Cycle selectedCycle)
         {
             // Convert cycleDuration from string to int safely
-            if (int.TryParse(selectedCycle.cycleDuration, out int cycleDurationInMinutes))
+            if (int.TryParse(selectedCycle.cycleDuration, out int cycleDurationSecs))
             {
-                // Start a timer that will automatically stop the machine after the cycle duration
-                var timer = new System.Timers.Timer(60000); // Trigger every minute
+                // Start a timer that triggers every second (1000 ms)
+                var timer = new System.Timers.Timer(1000); // Trigger every second
                 timer.Elapsed += async (sender, e) =>
                 {
-                    cycleDurationInMinutes--;
+                    cycleDurationSecs--; // Decrease remaining time by 1 second
 
-                    if (cycleDurationInMinutes <= 0)
+                    if (cycleDurationSecs <= 0)
                     {
-                        timer.Stop();
+                        timer.Stop(); // Stop the timer
                         Console.WriteLine("Cycle completed. Stopping the machine...");
-                        await _laundryService.StopMachineStateAsync(selectedCycle); // Stop the machine
+                        await _laundryService.StopMachineStateAsync(selectedCycle.machineId); // Stop the machine
                     }
                     else
                     {
-                        Console.WriteLine($"Cycle in progress. Remaining time: {cycleDurationInMinutes} minutes.");
+                        Console.WriteLine($"Cycle in progress. Remaining time: {cycleDurationSecs} seconds.");
                     }
                 };
 
-                timer.Start();
+                timer.Start(); // Start the timer
             }
             else
             {
                 Console.WriteLine("Invalid cycle duration. Unable to start the timer.");
             }
         }
+
 
     }
 }
